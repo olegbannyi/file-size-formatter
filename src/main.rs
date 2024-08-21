@@ -1,28 +1,53 @@
-enum FileSize {
-    Bytes(u64),
-    Kilobytes(f64),
-    Megabytes(f64),
-    Gigabytes(f64),
+#[derive(Debug)]
+struct Sizes {
+    bytes: String,
+    kilobytes: String,
+    megabytes: String,
+    gigabytes: String,
 }
 
-fn format_size(size: u64) -> String {
-    let filesize = match size {
-        0..=999 => FileSize::Bytes(size),
-        1000..=999_999 => FileSize::Kilobytes(size as f64 / 1000.0),
-        1_000_000..=999_999_999 => FileSize::Megabytes(size as f64 / 1_000_000.0),
-        _ => FileSize::Gigabytes(size as f64 / 1_000_000_000.0),
-    };
+impl Sizes {
+    fn from(size: u64) -> Self {
+        Sizes {
+            bytes: format!("{} bytes", size),
+            kilobytes: format!("{} kilobytes", size / 1_000),
+            megabytes: format!("{} megabytes", size / 1_000_000),
+            gigabytes: format!("{} gigabytes", size / 1_000_000_000),
+        }
+    }
 
-    match filesize {
-        FileSize::Bytes(bytes) => format!("{} bytes", bytes),
-        FileSize::Kilobytes(kb) => format!("{:.2} KB", kb),
-        FileSize::Megabytes(mb) => format!("{:.2} MB", mb),
-        FileSize::Gigabytes(gb) => format!("{:.2} GB", gb),
+    fn parse(input: &str) -> Result<Sizes, String> {
+        let data = input.split_whitespace().collect::<Vec<&str>>();
+        let size = match data[0].parse::<u64>() {
+            Ok(n) => n,
+            Err(_) => Err("Invalid number provided")?,
+        };
+        let unit = match data.get(1) {
+            Some(s) => s,
+            None => Err("No unit provided")?,
+        };
+
+        let bytes = match *unit {
+            "bytes" => size,
+            "kb" => size * 1_000,
+            "mb" => size * 1_000_000,
+            "gb" => size * 1_000_000_000,
+            _ => Err(format!("Invalid unit provided: {}", size))?,
+        };
+
+        Ok(Sizes::from(bytes))
     }
 }
 
-
 fn main() {
-    let result = format_size(6888837399);
-    println!("{}", result)
+    let args = std::env::args().collect::<Vec<String>>();
+    if args.len() != 2 {
+        eprintln!("Usage: {} \"<file size>\"", args[0]);
+        std::process::exit(1);
+    }
+
+    match Sizes::parse(args[1].as_str()) {
+        Ok(sizes) => println!("{:?}", sizes),
+        Err(e) => eprintln!("{}", e),
+    }
 }
